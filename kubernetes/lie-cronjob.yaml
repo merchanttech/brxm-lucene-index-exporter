@@ -1,0 +1,41 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: brxm-lucene-index-exporter
+spec:
+  schedule: " 0 */4 * * *" #every 4 hours
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: lucene-index-exporter
+              image: com.github.bcanvural/brxm-lucene-index-exporter:0.0.1-SNAPSHOT
+              env:
+              - name: LIE_USER
+                value: "admin"
+              - name: LIE_PASSWORD
+                value: "admin"
+              - name: LIE_URL
+                value: "http://brxm:8080/cms/ws/indexexport"
+              - name: LIE_MAX_RETRIES
+                value: "5"
+              - name: LIE_RETRY_INTERVAL_MS
+                value: "10000"
+              - name: LIE_TEMP_INDEX_DIR
+                value: "/indexrootdir/temp/"
+              - name: LIE_LIVE_INDEX_DIR
+                value: "/indexrootdir/liveindex/"
+              - name: LIE_BACKUP_INDEX_DIR
+                value: "/indexrootdir/indexbackup/"
+              - name: LIE_INDEX_RETENTION_DAYS
+                value: "7"
+              volumeMounts:
+                - mountPath: "/indexrootdir/"
+                  name: lie-volume
+          volumes:
+            - name: lie-volume
+              persistentVolumeClaim:
+                claimName: lie-claim
+          restartPolicy: Never
+      backoffLimit: 4
