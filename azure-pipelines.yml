@@ -1,0 +1,58 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  dockerRegistryServiceConnection: 'd810e509-c00e-40cd-ac80-4bb57b500eaf'
+  tag: '$(Build.BuildId)'  
+  imageRepository: 'com.github.bcanvural/brxm-lucene-index-exporter'  
+  containerRegistry: 'themtmagency.azurecr.io'
+  imageRepositoryTag: 'themtmagency.azurecr.io/com.github.bcanvural/brxm-lucene-index-exporter'
+  imagePullSecret: 'themtmagency58719d15-auth'
+  nhbcImagePullSecret: 'mtm-azuredevops-acr-sp'
+  containerRegistryUser: 'themtmagency'
+  containerRegistryPwd: 'mvdQKHI=c8Qd2VMxMG2CBK5FeGk2Vq5d'  
+  #tag: ':0.0.1-SNAPSHOT'
+
+stages:
+- stage: Build
+  displayName: Build stage
+  jobs:  
+  - job: Build
+    displayName: Build
+    steps:
+      - task: Maven@3
+        displayName: Solution Build
+        inputs:
+          mavenPomFile: 'pom.xml'
+          goals: 'clean compile jib:dockerBuild'
+          publishJUnitResults: false
+          javaHomeOption: 'JDKVersion'
+          jdkVersionOption: '1.8'
+          mavenVersionOption: 'Default'
+          mavenAuthenticateFeed: false
+          effectivePomSkip: false
+          sonarQubeRunAnalysis: false
+          options: '-DbuildNumber="$(tag)"'                
+      - task: Docker@2
+        displayName: Tag Image
+        inputs:
+          command: 'tag'
+          arguments: '$(imageRepository):0.0.1-SNAPSHOT $(imageRepositoryTag):$(tag)'      
+      - task: PowerShell@2
+        displayName: Login to Azure Registry
+        inputs:
+          targetType: 'inline'
+          script: 'docker login $(containerRegistry) -u $(containerRegistryUser) -p $(containerRegistryPwd)'
+      - task: PowerShell@2
+        displayName: Push to Azure Registry
+        inputs:
+          targetType: 'inline'          
+          script: 'docker push $(imageRepositoryTag):$(tag)'      
